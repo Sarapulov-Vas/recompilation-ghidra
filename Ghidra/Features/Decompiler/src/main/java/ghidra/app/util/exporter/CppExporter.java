@@ -49,6 +49,7 @@ public class CppExporter extends Exporter {
 	public static final String EMIT_TYPE_DEFINITONS = "Emit Data-type Definitions";
 	public static final String FUNCTION_TAG_FILTERS = "Function Tags to Filter";
 	public static final String FUNCTION_TAG_EXCLUDE = "Function Tags Excluded";
+	public static final String PLT_TRAMPOLINES_EXCLUDE = "Exclude PLT Trampolines";
 	public static final String C_RUNTIME_EXCLUDE = "Exclude C Runtime functions";
 
 	private static String EOL = System.getProperty("line.separator");
@@ -57,6 +58,7 @@ public class CppExporter extends Exporter {
 	private boolean isCreateCFile = true;
 	private boolean isUseCppStyleComments = true;
 	private boolean emitDataTypeDefinitions = true;
+	private boolean excludePLTTrampolines = true;
 	private boolean excludeCRuntime = true;
 	private String tagOptions = "";
 
@@ -189,6 +191,33 @@ public class CppExporter extends Exporter {
 		writeResults(results, headerWriter, cFileWriter, chunkingMonitor);
 	}
 
+	private static final String PLT_TRAMPOLINE_INSTRUCTION_QWORD = "JMP qword ptr";
+	private static final String PLT_TRAMPOLINE_INSTRUCTION_DWORD = "JMP dword ptr";
+
+	private boolean isPLTTrampoline(Function function) {
+		Program program = function.getProgram();
+		Listing listing = program.getListing();
+		AddressSetView body = function.getBody();
+		for (Address address : body.getAddresses(true)) {
+			CodeUnit codeUnit = listing.getCodeUnitAt(address);
+			if (!(codeUnit instanceof Instruction))
+				continue;
+			Instruction instruction = (Instruction) codeUnit;
+			String instructionString = instruction.toString();
+			if (instructionString.startsWith(PLT_TRAMPOLINE_INSTRUCTION_QWORD)
+					|| instructionString.startsWith(PLT_TRAMPOLINE_INSTRUCTION_DWORD)) {
+				Object inputObject = instruction.getInputObjects()[0];
+				if (!(inputObject instanceof Address))
+					continue;
+				Address jmpAddress = (Address) inputObject;
+				if (!(body.contains(jmpAddress))) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	private static final String CRT_PREFIX = "_";
 
 	private boolean isCRTFunction(Function function) {
@@ -197,6 +226,10 @@ public class CppExporter extends Exporter {
 	}
 	
 	private boolean excludeFunction(Function currentFunction) {
+
+		if (excludePLTTrampolines && isPLTTrampoline(currentFunction)) {
+			return true;
+		}
 
 		if (excludeCRuntime && isCRTFunction(currentFunction)) {
 			return true;
@@ -358,6 +391,7 @@ public class CppExporter extends Exporter {
 		list.add(new Option(EMIT_TYPE_DEFINITONS, Boolean.valueOf(emitDataTypeDefinitions)));
 		list.add(new Option(FUNCTION_TAG_FILTERS, tagOptions));
 		list.add(new Option(FUNCTION_TAG_EXCLUDE, Boolean.valueOf(excludeMatchingTags)));
+		list.add(new Option(PLT_TRAMPOLINES_EXCLUDE, Boolean.valueOf(excludePLTTrampolines)));
 		list.add(new Option(C_RUNTIME_EXCLUDE, Boolean.valueOf(excludeCRuntime)));
 		return list;
 	}
@@ -384,6 +418,9 @@ public class CppExporter extends Exporter {
 				}
 				else if (optName.equals(FUNCTION_TAG_EXCLUDE)) {
 					excludeMatchingTags = ((Boolean) option.getValue()).booleanValue();
+				}
+				else if (optName.equals(PLT_TRAMPOLINES_EXCLUDE)) {
+					excludePLTTrampolines = ((Boolean) option.getValue()).booleanValue();
 				}
 				else if (optName.equals(C_RUNTIME_EXCLUDE)) {
 					excludeCRuntime = ((Boolean) option.getValue()).booleanValue();
