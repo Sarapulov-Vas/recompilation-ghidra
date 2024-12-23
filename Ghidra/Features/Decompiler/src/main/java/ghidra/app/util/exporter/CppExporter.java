@@ -53,6 +53,8 @@ public class CppExporter extends Exporter {
 	public static final String FUNCTION_TAG_FILTERS = "Function Tags to Filter";
 	public static final String FUNCTION_TAG_EXCLUDE = "Function Tags Excluded";
 	public static final String INCLUDE_HEADER_FILES = "Include header files";
+	public static final String PLT_TRAMPOLINES_EXCLUDE = "Exclude PLT Trampolines";
+	public static final String C_RUNTIME_EXCLUDE = "Exclude C Runtime functions";
 
 	private static String EOL = System.getProperty("line.separator");
 
@@ -60,8 +62,11 @@ public class CppExporter extends Exporter {
 	private boolean isCreateCFile = true;
 	private boolean isUseCppStyleComments = true;
 	private boolean emitDataTypeDefinitions = true;
-	private boolean incledeHeaderFiles = true;
+	private boolean includeHeaderFiles = true;
+	private boolean excludePLTTrampolines = true;
+	private boolean excludeCRuntime = true;
 	private String tagOptions = "";
+
 
 	private Set<FunctionTag> functionTagSet = new HashSet<>();
 	private boolean excludeMatchingTags = true;
@@ -125,7 +130,7 @@ public class CppExporter extends Exporter {
 			ParallelDecompiler.createChunkingParallelDecompiler(callback, chunkingMonitor);
 
 		try {
-			if (incledeHeaderFiles) {
+			if (includeHeaderFiles) {
 				writeIncludeHeaders(program, header, headerWriter, cFileWriter);
 			}
 
@@ -387,7 +392,7 @@ public class CppExporter extends Exporter {
 		list.add(new Option(CREATE_C_FILE, Boolean.valueOf(isCreateCFile)));
 		list.add(new Option(USE_CPP_STYLE_COMMENTS, Boolean.valueOf(isUseCppStyleComments)));
 		list.add(new Option(EMIT_TYPE_DEFINITONS, Boolean.valueOf(emitDataTypeDefinitions)));
-		list.add(new Option(INCLUDE_HEADER_FILES, Boolean.valueOf(incledeHeaderFiles)));
+		list.add(new Option(INCLUDE_HEADER_FILES, Boolean.valueOf(includeHeaderFiles)));
 		list.add(new Option(FUNCTION_TAG_FILTERS, tagOptions));
 		list.add(new Option(FUNCTION_TAG_EXCLUDE, Boolean.valueOf(excludeMatchingTags)));
 		return list;
@@ -411,7 +416,7 @@ public class CppExporter extends Exporter {
 					emitDataTypeDefinitions = ((Boolean) option.getValue()).booleanValue();
 				}
 				else if (optName.equals(INCLUDE_HEADER_FILES)) {
-					incledeHeaderFiles = ((Boolean) option.getValue()).booleanValue();
+					includeHeaderFiles = ((Boolean) option.getValue()).booleanValue();
 				}
 				else if (optName.equals(FUNCTION_TAG_FILTERS)) {
 					tagOptions = (String) option.getValue();
